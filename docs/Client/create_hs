@@ -1,0 +1,1 @@
+python HackerspaceAPIStatusClient.py "http://localhost:5000" "api/hackerspace" test "admin" "admin" "post"

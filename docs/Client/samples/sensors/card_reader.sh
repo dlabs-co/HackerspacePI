@@ -11,5 +11,5 @@ while [ 1 ]; do
         echo "" > ~/.last_id_read
     }
 
-    bash ../update_status.sh $id_card $status $(date +%y-%m-%d %H:%M) 
+    bash ../update_status.sh $id_card $status $(date "+%y-%m-%d %H:%M") 
 done

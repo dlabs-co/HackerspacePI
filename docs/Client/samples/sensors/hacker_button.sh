@@ -9,7 +9,7 @@ while [ 1 ]; do
     [[ $state != $oldstate ]] && {
         oldstate=$state;
         [[ $state == 1 ]] && { $status="open"; } && { $status="closed"; }
-        bash ../update_status.sh "hacker_button" $status $(date +%y-%m-%d %H:%M) 
+        bash ../update_status.sh "hacker_button" $status $(date "+%y-%m-%d %H:%M") 
     }
     sleep 1s;
 done

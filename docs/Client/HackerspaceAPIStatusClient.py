@@ -4,6 +4,7 @@
 """
 
 import sys
+import os
 import json
 import requests
 import mechanize
@@ -41,8 +42,12 @@ def main(api_url, place, json_data, username, password, method):
         Main
     """
     cookiejar = open_session(api_url, username, password)
-    return make_request(api_url + "/" + place, json.loads(open(json_data).read()), cookiejar, method)
+    if os.path.exists(json_data):
+        json_data = open(json_data).read()
+    print json_data
+    json_ = json.loads(json_data)
+    return make_request(api_url + "/" + place, json_, cookiejar, method)
 
 
 if __name__ == "__main__":
-    print main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6]).text
+    print main(*sys.argv[1:])

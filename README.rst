@@ -17,4 +17,6 @@ Hackerspace API with varios sensors for status reporting implemented in Dlabs - 
 Features
 --------
 
-* TODO
+* Expose a hackerspace status API
+* Receive multiple sensors and handle them
+* Return open/closed status

@@ -40,6 +40,11 @@ setup(
     ],
     package_dir={'HackerspacePI':
                  'HackerspacePI'},
+    entry_points={
+        'console_scripts':
+            ['hackerspacepi=HackerspacePI.HackerspacePI:main']
+    },
+
     include_package_data=True,
     install_requires=requirements,
     license="BSD",

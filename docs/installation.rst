@@ -4,7 +4,8 @@ Installation
 
 At the command line::
 
-    $ easy_install HackerspacePI
+    $ cd HackerSpacePI
+    # python setup.py install
 
 Or, if you have virtualenvwrapper installed::
 

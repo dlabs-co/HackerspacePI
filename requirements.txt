@@ -1,1 +1,6 @@
-wheel==0.23.0
+Flask
+flask-sqlalchemy
+flask-restless
+flask-login
+mysql-python
+flask-wtf

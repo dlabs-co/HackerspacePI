@@ -3,10 +3,14 @@ HackerspacePI API
 
 The REST API is pretty much self-explaining, exposed api is as follows:
 Base_url is /api/, restless makes it so that::
+
 	/api/hackerspaces
 
+
 will return a list of all hackerspaces, while::
+
 	/api/hackerspaces/1
+
 
 will return only the first hackerspace
 
@@ -24,7 +28,9 @@ HackerSpace
 This is the main API. Everyone can make get requests to it, only auth users 
 may do POST and PATCH requests.
 
+
 A post request must be in the following form:: 
+
 	{ "space": "Dlabs Hackerspace",
 	    "logo": "http://www.dlabs.co/logo.svg",
 	    "url": "http://www.dlabs.co",

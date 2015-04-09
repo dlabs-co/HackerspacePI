@@ -2,15 +2,15 @@
 HackerspacePI presence
 ===============================
 
-.. image:: https://img.shields.io/travis/Dlabs-co/HackerspacePI.svg
-        :target: https://travis-ci.org/Dlabs-co/HackerspacePI
+.. image:: https://img.shields.io/travis/dlabs-co/HackerspacePI.svg
+        :target: https://travis-ci.org/dlabs-co/HackerspacePI
 
 .. image:: https://img.shields.io/pypi/v/HackerspacePI.svg
         :target: https://pypi.python.org/pypi/HackerspacePI
 
 
 Hackerspace API with varios sensors for status reporting 
-implemented in Dlabs - Zaragoza's Hackerspace
+implemented in dlabs - Zaragoza's Hackerspace
 
 * Free software: GPL2+ License 
 * Documentation: https://HackerspacePI.readthedocs.org.

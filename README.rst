@@ -9,14 +9,21 @@ HackerspacePI presence
         :target: https://pypi.python.org/pypi/HackerspacePI
 
 
-Hackerspace API with varios sensors for status reporting implemented in Dlabs - Zaragoza's Hackerspace
+Hackerspace API with varios sensors for status reporting 
+implemented in Dlabs - Zaragoza's Hackerspace
 
-* Free software: BSD license
+* Free software: GPL2+ License 
 * Documentation: https://HackerspacePI.readthedocs.org.
 
 Features
 --------
 
-* Expose a hackerspace status API
+* Expose a hackerspace status API (http://spaceapi.net)
 * Receive multiple sensors and handle them
 * Return open/closed status
+* Easy installation
+
+TODO
+-----
+* Smart handling of multiple sensors (priorities, aging...)
+* Better documentation it seems

@@ -2,8 +2,8 @@
 HackerspacePI presence
 ===============================
 
-.. image:: https://img.shields.io/travis/XayOn/HackerspacePI.svg
-        :target: https://travis-ci.org/XayOn/HackerspacePI
+.. image:: https://img.shields.io/travis/Dlabs-co/HackerspacePI.svg
+        :target: https://travis-ci.org/Dlabs-co/HackerspacePI
 
 .. image:: https://img.shields.io/pypi/v/HackerspacePI.svg
         :target: https://pypi.python.org/pypi/HackerspacePI

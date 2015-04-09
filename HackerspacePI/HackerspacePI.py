@@ -29,6 +29,11 @@ def read_config():
     cfgparser = ConfigParser()
     cfgparser.optionxform = str
     cfgparser.read(os.path.expanduser('~/.hackerspaceapi.cfg'))
+    if not cfgparser.has_section('main'):
+        cfgparser.add_section('main')
+        cfgparser.set('main', 'DEBUG', "True")
+        cfgparser.set('main', 'SECRET_KEY', "foo")
+        cfgparser.set('main', 'SQLALCHEMY_DATABASE_URI', 'sqlite://')
     return cfgparser
 
 

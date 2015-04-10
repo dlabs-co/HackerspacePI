@@ -13,6 +13,9 @@
 """
 
 import os
+import datetime
+from sqlalchemy import Date, cast
+from datetime import date
 from flask import render_template, redirect, url_for, Flask, flash
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.restless import APIManager, ProcessingException
@@ -72,11 +75,12 @@ class HackerSpace(DATABASE.Model):
         'Contact',
         backref=DATABASE.backref('hackerspace.id')
     )
-    state = DATABASE.relationship(
-        'State',
-        backref=DATABASE.backref('hackerspace.id')
-    )
-    # projects = DATABASE.Column(DATABASE.Text)
+
+    def state(self):
+        qu = DATABASE.query(State).\
+            filter(cast(State.date_time, Date) == date.today()).all()
+
+        return qu[0]
 
 
 class Location(DATABASE.Model):
@@ -216,11 +220,19 @@ def main():
     DATABASE.create_all()
     if len(User.query.all()) == 0:
         DATABASE.session.add(User(username=u'admin', password=u'admin'))
+
     DATABASE.session.commit()
     auth = dict(GET_SINGLE=[auth_func], GET_MANY=[auth_func])
+
     API_MANAGER.create_api(User, preprocessors=auth)
-    API_MANAGER.create_api(State, preprocessors=auth, methods=['GET', 'POST'])
-    API_MANAGER.create_api(HackerSpace, methods=['GET'])
+    API_MANAGER.create_api(State, preprocessors=auth, methods=['POST'])
+
+    API_MANAGER.create_api(
+        HackerSpace,
+        methods=['GET'],
+        include_methods=["state"]
+    )
+
     API_MANAGER.create_api(
         HackerSpace,
         methods=['POST', 'PUT', 'PATCH', 'DELETE'],

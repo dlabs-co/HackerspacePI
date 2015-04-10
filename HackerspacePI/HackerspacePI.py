@@ -32,6 +32,11 @@ def read_config():
     cfgparser = ConfigParser()
     cfgparser.optionxform = str
     cfgparser.read(os.path.expanduser('~/.hackerspaceapi.cfg'))
+    if not cfgparser.has_section('main'):
+        cfgparser.add_section('main')
+        cfgparser.set('main', 'DEBUG', "True")
+        cfgparser.set('main', 'SECRET_KEY', "foo")
+        cfgparser.set('main', 'SQLALCHEMY_DATABASE_URI', 'sqlite://')
     return cfgparser
 
 
@@ -66,14 +71,12 @@ class HackerSpace(DATABASE.Model):
     space = DATABASE.Column(DATABASE.Text)
     logo = DATABASE.Column(DATABASE.Text)
     url = DATABASE.Column(DATABASE.Text)
-    issue_report_channels = DATABASE.Column(DATABASE.Text)
+    csv_issue_report_channels = DATABASE.Column(DATABASE.Text)
     location = DATABASE.relationship(
         'Location',
-        backref=DATABASE.backref('hackerspace.id')
     )
     contact = DATABASE.relationship(
         'Contact',
-        backref=DATABASE.backref('hackerspace.id')
     )
 
     def state(self):
@@ -82,6 +85,22 @@ class HackerSpace(DATABASE.Model):
 
         return qu[0]
 
+    loc_id = DATABASE.Column(
+        DATABASE.Integer,
+        DATABASE.ForeignKey('location.id')
+    )
+    contact_id = DATABASE.Column(
+        DATABASE.Integer,
+        DATABASE.ForeignKey('contact.id')
+    )
+    state_id = DATABASE.Column(
+        DATABASE.Integer,
+        DATABASE.ForeignKey('state.id')
+    )
+    def issue_report_channels(self):
+        return self.csv_issue_report_channels.split(',')
+    def api(self):
+        return "0.13"
 
 class Location(DATABASE.Model):
     """
@@ -91,12 +110,9 @@ class Location(DATABASE.Model):
     id = DATABASE.Column(
         DATABASE.Integer, primary_key=True
     )
-    id_hs = DATABASE.Column(
-        DATABASE.Integer,
-        DATABASE.ForeignKey('hackerspace.id'))
     address = DATABASE.Column(DATABASE.Text)
-    lat = DATABASE.Column(DATABASE.Text)
-    lon = DATABASE.Column(DATABASE.Text)
+    lat = DATABASE.Column(DATABASE.Float)
+    lon = DATABASE.Column(DATABASE.Float)
 
 
 class Contact(DATABASE.Model):
@@ -107,12 +123,9 @@ class Contact(DATABASE.Model):
     id = DATABASE.Column(
         DATABASE.Integer, primary_key=True
     )
-    id_hs = DATABASE.Column(
-        DATABASE.Integer,
-        DATABASE.ForeignKey('hackerspace.id'))
     twitter = DATABASE.Column(DATABASE.Text)
     email = DATABASE.Column(DATABASE.Text)
-    ml = DATABASE.Column(DATABASE.Text)
+    list = DATABASE.Column(DATABASE.Text)
     irc = DATABASE.Column(DATABASE.Text)
 
 
@@ -132,31 +145,9 @@ class State(DATABASE.Model):
     id = DATABASE.Column(
         DATABASE.Integer, primary_key=True
     )
-    id_hs = DATABASE.Column(
-        DATABASE.Integer,
-        DATABASE.ForeignKey('hackerspace.id'))
     date = DATABASE.Column(DATABASE.Text)
     trigger_person = DATABASE.Column(DATABASE.Text)
-    status = DATABASE.Column(DATABASE.Text)
-
-
-class Test(DATABASE.Model):
-    """
-        Status changes
-        To update the hackerspace status
-        we should create a new status object
-        and update the hackerspace one to point
-        to it
-        As a norm, i propose to use trigger person
-        as follows:
-            - Username (if needed, get name from ID)
-            - If not username, plugin_name
-    """
-    __tablename__ = "test"
-    id = DATABASE.Column(
-        DATABASE.Integer, primary_key=True
-    )
-    date = DATABASE.Column(DATABASE.DateTime)
+    open = DATABASE.Column(DATABASE.Boolean)
 
 
 @LOGIN_MANAGER.user_loader
@@ -212,6 +203,14 @@ def auth_func(**kw):
         raise ProcessingException(description='Unauthorized', code=401)
 
 
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = 'example.com'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
+
+APP.after_request(add_cors_headers)
+
 def main():
     """
         - Create all
@@ -230,14 +229,14 @@ def main():
     API_MANAGER.create_api(
         HackerSpace,
         methods=['GET'],
-        include_methods=["state"]
+        include_methods=['api', 'issue_report_channels', 'state'],
+        exclude_columns=[
+            'csv_issue_report_channels', 'contact_id',
+            'id', 'loc_id', 'state_id', 'location.id',
+            'contact.id', 'state.id'
+        ]
     )
 
-    API_MANAGER.create_api(
-        HackerSpace,
-        methods=['POST', 'PUT', 'PATCH', 'DELETE'],
-        preprocessors=auth
-    )
     APP.run(debug=True)
 
 if __name__ == "__main__":

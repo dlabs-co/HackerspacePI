@@ -21,6 +21,8 @@ from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.restless import APIManager, ProcessingException
 from flask.ext.login import current_user, login_user, LoginManager, UserMixin
 from flask.ext.wtf import Form
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from wtforms import PasswordField, SubmitField, TextField
 from ConfigParser import ConfigParser
 
@@ -49,6 +51,9 @@ LOGIN_MANAGER.setup_app(APP)
 DATABASE = SQLAlchemy(APP)
 API_MANAGER = APIManager(APP, flask_sqlalchemy_db=DATABASE)
 
+SOME = create_engine(CONFIG.get('main', 'SQLALCHEMY_DATABASE_URI'))
+SESSION_ = sessionmaker(bind=SOME)
+SESSION = SESSION_()
 
 class User(DATABASE.Model, UserMixin):
     """
@@ -80,10 +85,16 @@ class HackerSpace(DATABASE.Model):
     )
 
     def state(self):
-        qu = DATABASE.query(State).\
-            filter(cast(State.date_time, Date) == date.today()).all()
-
-        return qu[0]
+        qu = SESSION.query(State).\
+            filter(cast(State.date, Date) == date.today()).all()
+	if not qu: 
+            return {
+                'state': 'closed', 
+                'trigger_person':'uninitialized', 
+                'date': datetime.datetime.now()
+            }
+        else:
+           return qu.pop()
 
     loc_id = DATABASE.Column(
         DATABASE.Integer,

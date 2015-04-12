@@ -14,7 +14,7 @@
 
 import os
 import datetime
-from sqlalchemy import DateTime, cast, Interval
+from sqlalchemy import DateTime, cast, Interval, desc
 from datetime import date
 from flask import render_template, redirect, url_for, Flask, flash
 from flask.ext.sqlalchemy import SQLAlchemy
@@ -51,7 +51,7 @@ LOGIN_MANAGER.setup_app(APP)
 DATABASE = SQLAlchemy(APP)
 API_MANAGER = APIManager(APP, flask_sqlalchemy_db=DATABASE)
 
-SOME = create_engine(CONFIG.get('main', 'SQLALCHEMY_DATABASE_URI'))
+SOME = create_engine(CONFIG.get('main', 'SQLALCHEMY_DATABASE_URI'), echo=True)
 SESSION_ = sessionmaker(bind=SOME)
 SESSION = SESSION_()
 
@@ -98,8 +98,8 @@ class HackerSpace(DATABASE.Model):
 
     def state(self):
         qu = SESSION.query(State).\
-            filter(cast(State.date, DateTime) >= (cast(datetime.datetime.now(), DateTime)  - cast(State.expiration, Interval))).\
-            filter(State.hs_id == self.id).order_by(State.date).all()
+            filter(cast(State.date, DateTime) <= (cast(datetime.datetime.now(), DateTime)  - cast(State.expiration, Interval))).\
+            filter(State.hs_id == self.id).order_by(desc(State.date)).all()
 	if not qu: 
             return {
                 'state': 'closed', 
@@ -107,7 +107,7 @@ class HackerSpace(DATABASE.Model):
                 'date': datetime.datetime.now()
             }
         else:
-            return qu[-1]
+            return qu[0]
 
     def issue_report_channels(self):
         return self.csv_issue_report_channels.split(',')

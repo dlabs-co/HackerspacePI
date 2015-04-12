@@ -14,7 +14,7 @@
 
 import os
 import datetime
-from sqlalchemy import Date, cast
+from sqlalchemy import DateTime, cast, Interval
 from datetime import date
 from flask import render_template, redirect, url_for, Flask, flash
 from flask.ext.sqlalchemy import SQLAlchemy
@@ -77,16 +77,29 @@ class HackerSpace(DATABASE.Model):
     logo = DATABASE.Column(DATABASE.Text)
     url = DATABASE.Column(DATABASE.Text)
     csv_issue_report_channels = DATABASE.Column(DATABASE.Text)
+
     location = DATABASE.relationship(
         'Location',
     )
+
     contact = DATABASE.relationship(
         'Contact',
     )
 
+    loc_id = DATABASE.Column(
+        DATABASE.Integer,
+        DATABASE.ForeignKey('location.id')
+    )
+
+    contact_id = DATABASE.Column(
+        DATABASE.Integer,
+        DATABASE.ForeignKey('contact.id')
+    )
+
     def state(self):
         qu = SESSION.query(State).\
-            filter(cast(State.date, Date) == date.today()).all()
+            filter(cast(State.date, DateTime) >= (cast(datetime.datetime.now(), DateTime)  - cast(State.expiration, Interval))).\
+            filter(State.hs_id == self.id).order_by(State.date).all()
 	if not qu: 
             return {
                 'state': 'closed', 
@@ -94,22 +107,11 @@ class HackerSpace(DATABASE.Model):
                 'date': datetime.datetime.now()
             }
         else:
-           return qu.pop()
+            return qu[-1]
 
-    loc_id = DATABASE.Column(
-        DATABASE.Integer,
-        DATABASE.ForeignKey('location.id')
-    )
-    contact_id = DATABASE.Column(
-        DATABASE.Integer,
-        DATABASE.ForeignKey('contact.id')
-    )
-    state_id = DATABASE.Column(
-        DATABASE.Integer,
-        DATABASE.ForeignKey('state.id')
-    )
     def issue_report_channels(self):
         return self.csv_issue_report_channels.split(',')
+
     def api(self):
         return "0.13"
 
@@ -156,8 +158,15 @@ class State(DATABASE.Model):
     id = DATABASE.Column(
         DATABASE.Integer, primary_key=True
     )
+
+    hs_id = DATABASE.Column(
+        DATABASE.Integer,
+        DATABASE.ForeignKey('hackerspace.id')
+    )
+
     date = DATABASE.Column(DATABASE.Text)
     trigger_person = DATABASE.Column(DATABASE.Text)
+    expiration = DATABASE.Column(DATABASE.Integer)
     open = DATABASE.Column(DATABASE.Boolean)
 
 
@@ -236,6 +245,7 @@ def main():
 
     API_MANAGER.create_api(User, preprocessors=auth)
     API_MANAGER.create_api(State, preprocessors=auth, methods=['POST'])
+    API_MANAGER.create_api(HackerSpace, preprocessors=auth, methods=['POST'])
 
     API_MANAGER.create_api(
         HackerSpace,
@@ -244,7 +254,7 @@ def main():
         exclude_columns=[
             'csv_issue_report_channels', 'contact_id',
             'id', 'loc_id', 'state_id', 'location.id',
-            'contact.id', 'state.id'
+            'contact.id', 'state.id', 'state.expiration'
         ]
     )
 

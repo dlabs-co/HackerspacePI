@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 
@@ -7,49 +7,29 @@ try:
 except ImportError:
     from distutils.core import setup
 
-
-with open('README.rst') as readme_file:
-    readme = readme_file.read()
-
-with open('HISTORY.rst') as history_file:
-    history = history_file.read().replace('.. :changelog:', '')
-
-requirements = [
-    'Flask',
-    'flask-sqlalchemy',
-    'flask-restless',
-    'flask-login',
-    'mysql-python',
-    'flask-wtf'
-]
-
-test_requirements = [
-    # TODO: put package test requirements here
-]
-
 setup(
-    name='HackerspacePI',
-    version='0.1.0',
-    description="Hackerspace API with varios sensors for status reporting implemented in Dlabs - Zaragoza's Hackerspace",
-    long_description=readme + '\n\n' + history,
+    name='hackerspacepi',
+    version='0.1.1',
+    description="SpaceAPI compliant service written in python3.5",
+    long_description="SpaceAPI compliant service written in python3.5",
     author="David Francos Cuartero",
     author_email='me@davidfrancos.net',
     url='https://github.com/XayOn/HackerspacePI',
     packages=[
-        'HackerspacePI',
+        'hackerspacepi',
     ],
-    package_dir={'HackerspacePI':
-                 'HackerspacePI'},
+    package_dir={'hackerspacepi':
+                 'hackerspacepi'},
     entry_points={
         'console_scripts':
-            ['hackerspacepi=HackerspacePI.HackerspacePI:main']
+        ['hackerspacepi=hackerspacepi:server']
     },
 
     include_package_data=True,
-    install_requires=requirements,
+    install_requires=["aiohttp"],
     license="BSD",
     zip_safe=False,
-    keywords='HackerspacePI',
+    keywords='hackerspacepi',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
@@ -62,6 +42,4 @@ setup(
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
     ],
-    test_suite='tests',
-    tests_require=test_requirements
 )

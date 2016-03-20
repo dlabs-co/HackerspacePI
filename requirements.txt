@@ -1,6 +1,0 @@
-Flask
-flask-sqlalchemy
-flask-restless
-flask-login
-mysql-python
-flask-wtf

@@ -6,7 +6,7 @@ import pickle
 import time
 import json
 import os
-from contextlib import suppress, contextmanager
+from contextlib import suppress
 import asyncio
 import aiohttp
 import sys
@@ -88,8 +88,9 @@ class Status(PersistentDict):
 
 
 class StatusClient(Status):
-    def __init__(self, path="http://localhost:8080"):
+    def __init__(self, path="http://localhost:8080", token=False):
         self._path = path
+        self.headers = {'AUTH': token}
 
     def path(self, resource=False):
         if not resource:
@@ -114,7 +115,8 @@ class StatusClient(Status):
 
     async def save(self, where, what):
         with aiohttp.ClientSession() as session:
-            async with session.patch(self.path(where), data=what) as resp:
+            async with session.patch(self.path(where), data=what,
+                                     headers=self.headers) as resp:
                 if resp.status != 200:
                     return await resp.text()
                 return True
@@ -138,6 +140,14 @@ class StatusAPI(web.View):
         return web.Response(body=self.request.app['status'].__json__)
 
     async def patch(self):
+        token = self.request.headers.get('AUTH')
+        expected = self.request.app['status'].token
+        if expected:
+            if token != expected:
+                raise aiohttp.web.HTTPUnauthorized()
+        else:
+            self.request.app['status'].token = token
+
         key = self.request.match_info['what']
         self.request.app['status'][key] = await self.request.json()
         self.request.app['status'].save()
@@ -158,10 +168,10 @@ def server():
 
 
 def client():
-    with StatusClient(sys.argv[1]) as client:
-        assert len(sys.argv) > 1, "Wrong params: url [key] [value]"
-        if len(sys.argv) > 2:
-            client[sys.argv[2]] = json.loads(sys.argv[3])
+    with StatusClient(sys.argv[1], sys.argv[2]) as client:
+        assert len(sys.argv) > 1, "Wrong params: url token [key] [value]"
+        if len(sys.argv) > 3:
+            client[sys.argv[3]] = json.loads(sys.argv[4])
         print(client)
 
 

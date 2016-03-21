@@ -7,10 +7,27 @@ import time
 import json
 import os
 from contextlib import suppress
+import aiohttp
 from aiohttp import web
 
 
-class Status:
+class BaseStatus:
+    def __init__(self):
+        self._mandatory_attrs = ["api", "logo", "url", "space"]
+        self._statuses = {}
+        self.api = "0.13"
+        self.logo = False
+        self.url = False
+        self.logo = False
+        self.location = {'lat': False, 'lon': False, 'address': False}
+        self.open = False
+        self.space = False
+        self.contact = {}
+        self.icon = {'open': False, 'closed': False}
+        self.issue_report_channels = ["email"]
+
+
+class Status(BaseStatus):
     """
         Objeto StatusAPI, para empezar, carga este objeto en ipython,
         crealo con los parametros necesarios rellenos y guardalo con save
@@ -24,20 +41,6 @@ class Status:
             - En base a esto, calculamos si el espacio esta abierto o cerrado
             - Podemos actualizar multiples sensores en una sola peticion
     """
-
-    def __init__(self):
-        self._statuses = {}
-        self.api = "0.13"
-        self.logo = False
-        self.url = False
-        self.logo = False
-        self.location = {'lat': False, 'lon': False, 'address': False}
-        self.open = False
-        self.space = False
-        self.contact = {}
-        self.icon = {'open': False, 'closed': False}
-        self.issue_report_channels = ["email"]
-
     @classmethod
     def path(cls):
         """ Path del pickle """
@@ -71,11 +74,8 @@ class Status:
     @state.setter
     def state(self, status_dict):
         """ Establece un estado """
-        keys = list(status_dict.values())[0].keys()
-        for key in ['timeout', 'trigger', 'open']:
-            if key not in keys:
-                raise AttributeError('Un estado tiene que tener timeout,'
-                                     ' open y trigger')
+        keys = set(list(status_dict.values())[0].keys())
+        assert set(['timeout', 'trigger', 'open']).issubset(keys)
         for key, values in status_dict.items():
             values['time'] = time.time()
             self._statuses[key] = values
@@ -95,10 +95,38 @@ class Status:
     @property
     def __json__(self):
         """ Dict magic """
+        assert all([getattr(self, a) for a in self._mandatory_attrs]), \
+            "No todos los parametros obligatorios estan establecidos"
         dict_ = {a: b for a, b in self.__dict__.items()
                  if not a.startswith('_')}
         dict_['state'] = self.state
         return json.dumps(dict_).encode('utf-8')
+
+
+class StatusClient(Status):
+    """ Seteamos _path despues de instanciarla
+        antes de operar con ella"""
+    _path = "http://localhost:8080"
+
+    @property
+    def path(self):
+        return self._path
+
+    async def load(self):
+        """ Recarga el objeto desde el pickle y lo devuelve """
+        with aiohttp.ClientSession() as session:
+            async with session.get(self.path) as resp:
+                for key, value in await resp.json():
+                    setattr(self, key, value)
+
+    async def save(self):
+        """ Guarda en el pickle el objeto actual"""
+        for attr_name, attr_values in self.__json__:
+            value = json.dumps(attr_values).encode('utf-8')
+            with aiohttp.ClientSession() as session:
+                async with session.patch(self.path + "/{}".format(attr_name),
+                                         data=value) as resp:
+                    await resp.text()
 
 
 class StatusAPI(web.View):
@@ -111,9 +139,8 @@ class StatusAPI(web.View):
         """
             Establece cualquier propiedad del objeto ``Status``
         """
-        await self.request.post()
-        for key, value in self.request.POST.items():
-            setattr(self.request.app['status'], key, json.loads(value))
+        key = self.request.match_info['what']
+        setattr(self.request.app['status'], key, await self.request.json())
         self.request.app['status'].save()
         return web.Response(body=b'OK')
 
@@ -127,9 +154,11 @@ def server():
     """ Lanzamos el servidor web"""
     app = web.Application()
     app['status'] = Status().load()
+    app.router.add_route('*', '/{what}', StatusAPI)
     app.router.add_route('*', '/', StatusAPI)
     app.on_shutdown.append(on_shutdown)
     web.run_app(app)
+
 
 
 if __name__ == "__main__":

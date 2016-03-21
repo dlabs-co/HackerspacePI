@@ -114,10 +114,7 @@ class StatusClient(Status):
 
     async def save(self, where, what):
         with aiohttp.ClientSession() as session:
-            print("OK, on save")
             async with session.patch(self.path(where), data=what) as resp:
-                print("Esto ha llamado a patch")
-                print(self.path(where))
                 if resp.status != 200:
                     return await resp.text()
                 return True

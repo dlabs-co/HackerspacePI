@@ -37,6 +37,7 @@ class Status(PersistentDict):
         self._mandatory_attrs = ["api", "logo", "url", "space"]
         self._statuses = {}
         self["api"] = "0.13"
+        self.token = False
         PersistentDict.__init__(self)
 
     @property

@@ -150,7 +150,11 @@ class StatusAPI(web.View):
             self.request.app['status'].token = token
 
         key = self.request.match_info['what']
-        self.request.app['status'][key] = await self.request.json()
+        if key == "state":
+            setattr(self.request.app['status'], 'state',
+                    await self.request.json())
+        else:
+            self.request.app['status'][key] = await self.request.json()
         self.request.app['status'].save()
         return web.Response(body=b'OK')
 

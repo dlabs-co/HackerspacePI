@@ -113,8 +113,10 @@ class StatusClient(Status):
     async def save(self, where, what):
         with aiohttp.ClientSession() as session:
             async with session.patch(self.path(where), data=what) as resp:
-                await resp.text()
-                return resp.status == 200
+                print(self.path(where))
+                if resp.status != 200:
+                    return await resp.text()
+                return True
 
     def save_all(self):
         def awaitables():
@@ -148,8 +150,8 @@ async def on_shutdown(app):
 def server():
     app = web.Application()
     app['status'] = Status().load()
-    app.router.add_route('*', '/{what}', StatusAPI)
-    app.router.add_route('*', '/', StatusAPI)
+    app.router.add_route('*', '/api/{what}', StatusAPI)
+    app.router.add_route('*', '/api', StatusAPI)
     app.on_shutdown.append(on_shutdown)
     web.run_app(app)
 

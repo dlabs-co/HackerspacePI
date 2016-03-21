@@ -7,44 +7,36 @@ import time
 import json
 import os
 from contextlib import suppress
+import asyncio
 import aiohttp
 from aiohttp import web
 
 
-class BaseStatus:
-    def __init__(self):
-        self._mandatory_attrs = ["api", "logo", "url", "space"]
-        self._statuses = {}
-        self.api = "0.13"
-        self.logo = False
-        self.url = False
-        self.logo = False
-        self.location = {'lat': False, 'lon': False, 'address': False}
-        self.open = False
-        self.space = False
-        self.contact = {}
-        self.icon = {'open': False, 'closed': False}
-        self.issue_report_channels = ["email"]
-
-
-class Status(BaseStatus):
-    """
-        Objeto StatusAPI, para empezar, carga este objeto en ipython,
-        crealo con los parametros necesarios rellenos y guardalo con save
-        El sistema de estados es bastante sencillo:
-            - Almacenamos, por cada sensor, el timeout del sensor
-            (unix timestamp de la fecha en la que va a caducar),
-            el trigger_person (en la mayoria de sensores, salvo
-            por ejemplo en uno de tarjetas esto sera el sensor mismo)
-            y si el estado al que pasa el sensor es a abierto o a cerrado
-            Podemos poner un timeout a cero, para sensores sin timeout
-            - En base a esto, calculamos si el espacio esta abierto o cerrado
-            - Podemos actualizar multiples sensores en una sola peticion
-    """
+class PersistentDict(dict):
     @classmethod
     def path(cls):
         """ Path del pickle """
         return os.path.expanduser('~/.statusapi.pickle')
+
+    @classmethod
+    def load(cls):
+        """ Recarga el objeto desde el pickle y lo devuelve """
+        with suppress(FileNotFoundError, EOFError):
+            return pickle.load(open(cls.path(), 'rb'))
+        return cls()
+
+    def save(self):
+        """ Guarda en el pickle el objeto actual"""
+        with open(self.path(), 'wb') as fobj:
+            pickle.dump(self, fobj)
+
+
+class Status(PersistentDict):
+    def __init__(self):
+        self._mandatory_attrs = ["api", "logo", "url", "space"]
+        self._statuses = {}
+        self["api"] = "0.13"
+        PersistentDict.__init__(self)
 
     @property
     def state(self):
@@ -75,32 +67,28 @@ class Status(BaseStatus):
     def state(self, status_dict):
         """ Establece un estado """
         keys = set(list(status_dict.values())[0].keys())
-        assert set(['timeout', 'trigger', 'open']).issubset(keys)
+        if not set(['timeout', 'trigger', 'open']).issubset(keys):
+            raise aiohttp.web.HTTPBadRequest(text="Bad status, needs to have"
+                                             " timeout, trigger and open")
         for key, values in status_dict.items():
             values['time'] = time.time()
             self._statuses[key] = values
 
-    @classmethod
-    def load(cls):
-        """ Recarga el objeto desde el pickle y lo devuelve """
-        with suppress(FileNotFoundError, EOFError):
-            return pickle.load(open(cls.path(), 'rb'))
-        return cls()
-
-    def save(self):
-        """ Guarda en el pickle el objeto actual"""
-        with open(self.path(), 'wb') as fobj:
-            pickle.dump(self, fobj)
+    def is_complete(self):
+        """ Checks if all mandatory args are set"""
+        with suppress(KeyError):
+            return all([self[attr] for attr in self._mandatory_attrs])
+        return False
 
     @property
     def __json__(self):
         """ Dict magic """
-        assert all([getattr(self, a) for a in self._mandatory_attrs]), \
-            "No todos los parametros obligatorios estan establecidos"
-        dict_ = {a: b for a, b in self.__dict__.items()
-                 if not a.startswith('_')}
-        dict_['state'] = self.state
-        return json.dumps(dict_).encode('utf-8')
+        if not self.is_complete:
+            raise aiohttp.web.HTTPBadRequest(
+                text="Not all mandatory args are set ({})".format(
+                    self._mandatory_attrs))
+        self['state'] = self.state
+        return json.dumps(self).encode('utf-8')
 
 
 class StatusClient(Status):
@@ -108,25 +96,37 @@ class StatusClient(Status):
         antes de operar con ella"""
     _path = "http://localhost:8080"
 
-    @property
-    def path(self):
-        return self._path
+    def path(self, resource=False):
+        if not resource:
+            return self._path
+        return self._path + "/{}".format(resource)
 
     async def load(self):
         """ Recarga el objeto desde el pickle y lo devuelve """
         with aiohttp.ClientSession() as session:
-            async with session.get(self.path) as resp:
-                for key, value in await resp.json():
-                    setattr(self, key, value)
+            async with session.get(self.path()) as resp:
+                if resp.status != 200:
+                    raise Exception(await resp.text())
+                json_ = await resp.json()
+                for key, value in json_.items():
+                    self[key] = value
 
-    async def save(self):
+    async def _save(self, where, what):
+        with aiohttp.ClientSession() as session:
+            async with session.patch(self.path(where), data=what) as resp:
+                await resp.text()
+                return resp.status == 200
+
+    def save(self):
         """ Guarda en el pickle el objeto actual"""
-        for attr_name, attr_values in self.__json__:
-            value = json.dumps(attr_values).encode('utf-8')
-            with aiohttp.ClientSession() as session:
-                async with session.patch(self.path + "/{}".format(attr_name),
-                                         data=value) as resp:
-                    await resp.text()
+        def awaitables():
+            """ Guardamos en paralelo"""
+            for attr_name, attr_values in self.items():
+                value = json.dumps(attr_values).encode('utf-8')
+                yield self._save(attr_name, value)
+        loop = asyncio.get_event_loop()
+        waited = loop.run_until_complete(asyncio.wait(list(awaitables())))
+        return [res.result() for res in waited[0]]
 
 
 class StatusAPI(web.View):
@@ -140,7 +140,7 @@ class StatusAPI(web.View):
             Establece cualquier propiedad del objeto ``Status``
         """
         key = self.request.match_info['what']
-        setattr(self.request.app['status'], key, await self.request.json())
+        self.request.app['status'][key] = await self.request.json()
         self.request.app['status'].save()
         return web.Response(body=b'OK')
 

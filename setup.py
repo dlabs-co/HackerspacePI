@@ -9,7 +9,7 @@ except ImportError:
 
 setup(
     name='hackerspacepi',
-    version='0.1.7',
+    version='0.1.8',
     description="SpaceAPI compliant service written in python3.5",
     long_description="SpaceAPI compliant service written in python3.5",
     author="David Francos Cuartero",

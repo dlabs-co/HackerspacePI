@@ -40,15 +40,16 @@ class Status(PersistentDict):
         PersistentDict.__init__(self)
 
     @property
-    def state(self):
-        def _get_status():
-            for _, status in self._statuses.items():
-                if status['timeout'] == 0 and status['open']:
-                    return True
-                if status['open'] and status['timeout'] < time.time():
-                    return True
-            return False
+    def open(self):
+        for _, status in self._statuses.items():
+            if status['timeout'] == 0 and status['open']:
+                return True
+            if status['open'] and status['timeout'] < time.time():
+                return True
+        return False
 
+    @property
+    def state(self):
         def _get_last_status():
             with suppress(IndexError):
                 return sorted(self._statuses.values(),
@@ -56,7 +57,7 @@ class Status(PersistentDict):
             return {'time': 0, 'trigger': "Nobody"}
 
         last_status = _get_last_status()
-        return {'open': _get_status(),
+        return {'open': self.open,
                 'lastchange': last_status['time'],
                 'trigger_person': last_status['trigger']}
 
@@ -82,6 +83,7 @@ class Status(PersistentDict):
                 text="Not all mandatory args are set ({})".format(
                     self._mandatory_attrs))
         self['state'] = self.state
+        self['open'] = self.open
         return json.dumps(self).encode('utf-8')
 
 
@@ -112,7 +114,9 @@ class StatusClient(Status):
 
     async def save(self, where, what):
         with aiohttp.ClientSession() as session:
+            print("OK, on save")
             async with session.patch(self.path(where), data=what) as resp:
+                print("Esto ha llamado a patch")
                 print(self.path(where))
                 if resp.status != 200:
                     return await resp.text()

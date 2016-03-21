@@ -22,7 +22,8 @@ setup(
                  'hackerspacepi'},
     entry_points={
         'console_scripts':
-        ['hackerspacepi=hackerspacepi:server']
+        ['hackerspacepi=hackerspacepi:server',
+        'hackerspacepi_client=hackerspacepi:client']
     },
 
     include_package_data=True,
